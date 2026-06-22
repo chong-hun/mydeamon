@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,7 +15,12 @@ import (
 func TestTickerLoopRunsAtLeastOnce(t *testing.T) {
 	var buf bytes.Buffer
 	logger := log.New(&buf, "", 0)
-	runner := NewRunner(logger)
+	path := filepath.Join(t.TempDir(), "task-state.json")
+	if err := SaveState(path, WorkState{Command: "date", Status: StatusIdle}); err != nil {
+		t.Fatalf("SaveState returned error: %v", err)
+	}
+	exec := &fakeExecutor{result: ExecResult{ExitCode: 0}}
+	runner := NewRunner(logger, path, exec)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -39,8 +46,11 @@ func TestTickerLoopRunsAtLeastOnce(t *testing.T) {
 	waitForSignal(t, ran, "runner to execute at least once")
 	waitForSignal(t, done, "ticker loop to stop after cancellation")
 
-	if !strings.Contains(buf.String(), "tick") {
-		t.Fatalf("expected log output to contain tick, got %q", buf.String())
+	if exec.calls != 1 {
+		t.Fatalf("expected 1 execution, got %d", exec.calls)
+	}
+	if !strings.Contains(buf.String(), "command start:") {
+		t.Fatalf("expected log output to contain command start, got %q", buf.String())
 	}
 }
 
@@ -100,6 +110,36 @@ func TestTickerLoopLogsCallbackErrors(t *testing.T) {
 
 	if !strings.Contains(buf.String(), "task ticker callback error: boom") {
 		t.Fatalf("expected callback error log, got %q", buf.String())
+	}
+}
+
+func TestTickerLoopCanDriveRunnerOnce(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "task-state.json")
+	if err := SaveState(path, WorkState{Command: "date", Status: StatusIdle}); err != nil {
+		t.Fatalf("SaveState returned error: %v", err)
+	}
+
+	exec := &fakeExecutor{result: ExecResult{ExitCode: 0}}
+	runner := NewRunner(log.New(io.Discard, "", 0), path, exec)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	ticks := make(chan time.Time, 1)
+
+	go func() {
+		runTickerLoop(ctx, ticks, func(ctx context.Context) error {
+			err := runner.RunOnce(ctx)
+			cancel()
+			return err
+		})
+		close(done)
+	}()
+
+	ticks <- time.Now()
+	waitForSignal(t, done, "ticker loop to stop")
+
+	if exec.calls != 1 {
+		t.Fatalf("expected 1 execution, got %d", exec.calls)
 	}
 }
 

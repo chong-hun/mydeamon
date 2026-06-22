@@ -41,3 +41,17 @@ func TestParseArgsRejectsMultipleCommands(t *testing.T) {
 		t.Fatal("expected error for multiple commands")
 	}
 }
+
+func TestParseArgsAcceptsReviewCommands(t *testing.T) {
+	for _, command := range []string{"approve", "reject", "resume"} {
+		t.Run(command, func(t *testing.T) {
+			parsed, err := parseArgs([]string{command})
+			if err != nil {
+				t.Fatalf("parseArgs returned error: %v", err)
+			}
+			if parsed.command != command {
+				t.Fatalf("expected %q, got %q", command, parsed.command)
+			}
+		})
+	}
+}

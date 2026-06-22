@@ -49,6 +49,9 @@ func (a *App) RunForeground(parent context.Context) error {
 	if err := os.MkdirAll(a.cfg.StateDir, 0o755); err != nil {
 		return err
 	}
+	if err := task.RewriteRunningStateToBlocked(taskStatePath(a.cfg.StateDir)); err != nil {
+		return err
+	}
 
 	server := newHealthServer(a.cfg.Address, cancel)
 	if err := server.start(); err != nil {
@@ -85,7 +88,7 @@ func (a *App) RunForeground(parent context.Context) error {
 		_ = server.shutdown(shutdownCtx)
 	}()
 
-	runner := task.NewRunner(a.logger)
+	runner := task.NewRunner(a.logger, taskStatePath(a.cfg.StateDir), task.OSExecutor{})
 	go task.StartTickerLoop(ctx, a.cfg.Interval, runner.RunOnce)
 
 	<-ctx.Done()
@@ -112,4 +115,8 @@ func (a *App) healthAddress() string {
 
 func healthAddressPath(stateDir string) string {
 	return filepath.Join(stateDir, "mydaemon.addr")
+}
+
+func taskStatePath(stateDir string) string {
+	return filepath.Join(stateDir, "task-state.json")
 }
