@@ -6,9 +6,11 @@ import (
 )
 
 const (
-	DirName = ".mydaemon"
-	PIDName = "mydaemon.pid"
-	LogName = "mydaemon.log"
+	DirName     = ".mydaemon"
+	PIDName     = "mydaemon.pid"
+	LogName     = "mydaemon.log"
+	TasksName   = "tasks.json"
+	RuntimeName = "runtime.json"
 )
 
 func DefaultStateDir() (string, error) {
@@ -26,4 +28,12 @@ func PIDPath(root string) string {
 
 func LogPath(root string) string {
 	return filepath.Join(root, LogName)
+}
+
+func TasksPath(root string) string {
+	return filepath.Join(root, TasksName)
+}
+
+func RuntimePath(root string) string {
+	return filepath.Join(root, RuntimeName)
 }
