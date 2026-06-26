@@ -1,5 +1,13 @@
 const path = require('node:path');
-const { app, BrowserWindow, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain } = require('electron');
+const {
+  createTask,
+  listTasks,
+  updateTask,
+  runTaskAction,
+  ensureDaemonRunning,
+  getDaemonStatus,
+} = require('./daemon-process');
 
 let mainWindow = null;
 let tray = null;
@@ -20,9 +28,7 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 }
 
-app.whenReady().then(() => {
-  createWindow();
-
+function createTray() {
   tray = new Tray(nativeImage.createFromDataURL(trayIconDataURL()));
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -38,4 +44,16 @@ app.whenReady().then(() => {
       { label: 'Quit App', click: () => app.quit() },
     ])
   );
+}
+
+ipcMain.handle('tasks:list', async () => listTasks());
+ipcMain.handle('tasks:create', async (_event, payload) => createTask(payload));
+ipcMain.handle('tasks:update', async (_event, { id, payload }) => updateTask(id, payload));
+ipcMain.handle('tasks:action', async (_event, { id, action }) => runTaskAction(id, action));
+ipcMain.handle('daemon:status', async () => getDaemonStatus());
+
+app.whenReady().then(async () => {
+  await ensureDaemonRunning();
+  createWindow();
+  createTray();
 });
