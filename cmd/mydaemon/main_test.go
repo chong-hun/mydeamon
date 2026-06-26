@@ -42,8 +42,8 @@ func TestParseArgsRejectsMultipleCommands(t *testing.T) {
 	}
 }
 
-func TestParseArgsAcceptsReviewCommands(t *testing.T) {
-	for _, command := range []string{"approve", "reject", "resume"} {
+func TestParseArgsAcceptsLifecycleCommands(t *testing.T) {
+	for _, command := range []string{"start", "stop", "status", "logs"} {
 		t.Run(command, func(t *testing.T) {
 			parsed, err := parseArgs([]string{command})
 			if err != nil {
@@ -51,6 +51,17 @@ func TestParseArgsAcceptsReviewCommands(t *testing.T) {
 			}
 			if parsed.command != command {
 				t.Fatalf("expected %q, got %q", command, parsed.command)
+			}
+		})
+	}
+}
+
+func TestParseArgsRejectsRemovedReviewCommands(t *testing.T) {
+	for _, command := range []string{"approve", "reject", "resume"} {
+		t.Run(command, func(t *testing.T) {
+			_, err := parseArgs([]string{command})
+			if err == nil {
+				t.Fatalf("expected %q to be rejected", command)
 			}
 		})
 	}
