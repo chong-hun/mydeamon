@@ -99,11 +99,15 @@ func newTaskHTTPHandler(service *tasks.Service, now func() time.Time) http.Handl
 
 func splitTaskPath(path string) (string, string) {
 	trimmed := strings.TrimPrefix(path, "/tasks/")
+	if trimmed == "" {
+		return "", ""
+	}
+
 	parts := strings.Split(trimmed, "/")
 	if len(parts) == 1 {
 		return parts[0], ""
 	}
-	if len(parts) >= 2 {
+	if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
 		return parts[0], parts[1]
 	}
 	return "", ""
