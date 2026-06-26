@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/chenxian/learning-go-daemon/internal/app"
 	"github.com/chenxian/learning-go-daemon/internal/state"
-	"github.com/chenxian/learning-go-daemon/internal/task"
 )
 
 type parsedArgs struct {
@@ -23,7 +21,7 @@ func parseArgs(args []string) (parsedArgs, error) {
 
 	for _, arg := range args {
 		switch arg {
-		case "start", "stop", "status", "logs", "approve", "reject", "resume":
+		case "start", "stop", "status", "logs":
 			if commandSet {
 				return parsedArgs{}, errors.New("multiple commands provided")
 			}
@@ -54,7 +52,6 @@ func main() {
 
 	cfg := app.DefaultConfig(stateDir)
 	cfg.Foreground = parsed.foreground
-	taskRunner := task.NewRunner(log.New(os.Stderr, "", 0), filepath.Join(stateDir, "task-state.json"), task.OSExecutor{})
 
 	switch parsed.command {
 	case "start":
@@ -87,21 +84,6 @@ func main() {
 		fmt.Println(status)
 	case "logs":
 		fmt.Println(state.LogPath(stateDir))
-	case "approve":
-		if err := taskRunner.Approve(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	case "reject":
-		if err := taskRunner.Reject(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	case "resume":
-		if err := taskRunner.Resume(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
 	default:
 		fmt.Fprintln(os.Stderr, "unknown command")
 		os.Exit(1)

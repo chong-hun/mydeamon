@@ -15,7 +15,7 @@ type healthServer struct {
 	addr     string
 }
 
-func newHealthServer(addr string, cancel context.CancelFunc) *healthServer {
+func newHealthServer(addr string, cancel context.CancelFunc, tasksHandler ...http.Handler) *healthServer {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -29,6 +29,11 @@ func newHealthServer(addr string, cancel context.CancelFunc) *healthServer {
 		w.WriteHeader(http.StatusOK)
 		cancel()
 	})
+	if len(tasksHandler) > 0 && tasksHandler[0] != nil {
+		mux.Handle("/runtime", tasksHandler[0])
+		mux.Handle("/tasks", tasksHandler[0])
+		mux.Handle("/tasks/", tasksHandler[0])
+	}
 	return &healthServer{
 		server: &http.Server{
 			Addr:    addr,

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mydaemon</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Local task board</p>
+        <h1>mydaemon</h1>
+      </div>
+      <div class="topbar-status">
+        <span id="daemon-indicator" class="status-pill status-idle">Checking daemon</span>
+        <button id="refresh-button" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <section class="toolbar">
+      <input id="search" type="search" placeholder="Search title or description">
+      <select id="status-filter" aria-label="Filter by status">
+        <option value="all">All statuses</option>
+        <option value="todo">Todo</option>
+        <option value="in_progress">In progress</option>
+        <option value="needs_review">Needs review</option>
+        <option value="blocked">Blocked</option>
+        <option value="done">Done</option>
+      </select>
+      <select id="priority-filter" aria-label="Filter by priority">
+        <option value="all">All priorities</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+      <button id="new-task-button" type="button">New Task</button>
+    </section>
+
+    <main class="layout">
+      <aside class="task-list-panel">
+        <div class="panel-header">
+          <h2>Tasks</h2>
+          <span id="task-count" class="panel-meta">0 items</span>
+        </div>
+        <div id="task-list" class="task-list"></div>
+      </aside>
+
+      <section id="task-detail" class="task-detail"></section>
+    </main>
+
+    <dialog id="create-dialog">
+      <form method="dialog" id="create-form" class="dialog-form">
+        <div class="dialog-header">
+          <h2>Create task</h2>
+          <button type="button" id="create-cancel" class="ghost-button">Close</button>
+        </div>
+        <label>
+          <span>Title</span>
+          <input name="title" required maxlength="120">
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea name="description" rows="6"></textarea>
+        </label>
+        <label>
+          <span>Priority</span>
+          <select name="priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <label>
+          <span>Tags</span>
+          <input name="tags" placeholder="backend, api">
+        </label>
+        <div class="dialog-actions">
+          <button type="button" id="create-dismiss" class="ghost-button">Cancel</button>
+          <button id="create-submit" type="submit">Create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./view-model.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

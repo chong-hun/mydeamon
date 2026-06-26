@@ -1,6 +1,6 @@
 # learning-go-daemon
 
-Small Go daemon learning project.
+Local Go daemon backend for a Linux Electron task board.
 
 ## Commands
 
@@ -9,26 +9,20 @@ Small Go daemon learning project.
 - `go run ./cmd/mydaemon stop`
 - `go run ./cmd/mydaemon logs`
 
-## Work State
+The daemon exposes local HTTP endpoints for runtime health and task management, with task state persisted in `~/.mydaemon/tasks.json`.
 
-The daemon persists one current work item in `~/.mydaemon/task-state.json`.
+## Desktop Development
 
-Work item states:
+1. Install desktop dependencies:
+   - `npm install`
+2. Start the daemon manually when debugging backend-only work:
+   - `go run ./cmd/mydaemon start --foreground`
+3. Launch the Electron shell:
+   - `npm run electron`
 
-- `idle`
-- `running`
-- `needs_review`
-- `blocked`
-- `completed`
+The Electron app will:
 
-Command exit code contract:
-
-- `0` = completed
-- `10` = needs review
-- other non-zero = blocked
-
-Review commands:
-
-- `go run ./cmd/mydaemon approve`
-- `go run ./cmd/mydaemon reject`
-- `go run ./cmd/mydaemon resume`
+- check whether the daemon is reachable
+- start the daemon if it is not running
+- show a tray entry with dashboard and lifecycle actions
+- let you create and update tasks from the dashboard
