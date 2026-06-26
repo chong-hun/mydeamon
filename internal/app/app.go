@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -9,7 +10,7 @@ import (
 	"time"
 
 	"github.com/chenxian/learning-go-daemon/internal/state"
-	"github.com/chenxian/learning-go-daemon/internal/task"
+	"github.com/chenxian/learning-go-daemon/internal/tasks"
 )
 
 type Config struct {
@@ -20,8 +21,9 @@ type Config struct {
 }
 
 type App struct {
-	cfg    Config
-	logger *log.Logger
+	cfg         Config
+	logger      *log.Logger
+	taskService *tasks.Service
 
 	mu     sync.RWMutex
 	health *healthServer
@@ -37,7 +39,12 @@ func DefaultConfig(stateDir string) Config {
 }
 
 func New(cfg Config, logger *log.Logger) *App {
-	return &App{cfg: cfg, logger: logger}
+	store := tasks.NewStore(state.TasksPath(cfg.StateDir))
+	service := tasks.NewService(store, time.Now, func() string {
+		return fmt.Sprintf("task_%d", time.Now().UTC().UnixNano())
+	})
+
+	return &App{cfg: cfg, logger: logger, taskService: service}
 }
 
 func (a *App) RunForeground(parent context.Context) error {
@@ -49,11 +56,8 @@ func (a *App) RunForeground(parent context.Context) error {
 	if err := os.MkdirAll(a.cfg.StateDir, 0o755); err != nil {
 		return err
 	}
-	if err := task.RewriteRunningStateToBlocked(taskStatePath(a.cfg.StateDir)); err != nil {
-		return err
-	}
 
-	server := newHealthServer(a.cfg.Address, cancel)
+	server := newHealthServer(a.cfg.Address, cancel, newTaskHTTPHandler(a.taskService, time.Now))
 	if err := server.start(); err != nil {
 		return err
 	}
@@ -88,9 +92,6 @@ func (a *App) RunForeground(parent context.Context) error {
 		_ = server.shutdown(shutdownCtx)
 	}()
 
-	runner := task.NewRunner(a.logger, taskStatePath(a.cfg.StateDir), task.OSExecutor{})
-	go task.StartTickerLoop(ctx, a.cfg.Interval, runner.RunOnce)
-
 	<-ctx.Done()
 	return nil
 }
@@ -115,8 +116,4 @@ func (a *App) healthAddress() string {
 
 func healthAddressPath(stateDir string) string {
 	return filepath.Join(stateDir, "mydaemon.addr")
-}
-
-func taskStatePath(stateDir string) string {
-	return filepath.Join(stateDir, "task-state.json")
 }
