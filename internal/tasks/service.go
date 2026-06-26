@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+var (
+	ErrValidation        = errors.New("task validation failed")
+	ErrNotFound          = errors.New("task not found")
+	ErrInvalidTransition = errors.New("task transition is invalid")
+)
+
 type Service struct {
 	store  *Store
 	now    func() time.Time
@@ -42,16 +48,16 @@ func (s *Service) Get(id string) (Task, error) {
 		}
 	}
 
-	return Task{}, fmt.Errorf("task %s not found", id)
+	return Task{}, fmt.Errorf("%w: task %s", ErrNotFound, id)
 }
 
 func (s *Service) Create(input CreateInput) (Task, error) {
 	title := strings.TrimSpace(input.Title)
 	if title == "" {
-		return Task{}, errors.New("title is required")
+		return Task{}, fmt.Errorf("%w: title is required", ErrValidation)
 	}
 	if !isValidPriority(input.Priority) {
-		return Task{}, fmt.Errorf("invalid priority %q", input.Priority)
+		return Task{}, fmt.Errorf("%w: invalid priority %q", ErrValidation, input.Priority)
 	}
 
 	collection, err := s.store.Load()
@@ -82,10 +88,10 @@ func (s *Service) Create(input CreateInput) (Task, error) {
 func (s *Service) Update(id string, input UpdateInput) (Task, error) {
 	title := strings.TrimSpace(input.Title)
 	if title == "" {
-		return Task{}, errors.New("title is required")
+		return Task{}, fmt.Errorf("%w: title is required", ErrValidation)
 	}
 	if !isValidPriority(input.Priority) {
-		return Task{}, fmt.Errorf("invalid priority %q", input.Priority)
+		return Task{}, fmt.Errorf("%w: invalid priority %q", ErrValidation, input.Priority)
 	}
 
 	collection, err := s.store.Load()
@@ -111,7 +117,7 @@ func (s *Service) Update(id string, input UpdateInput) (Task, error) {
 		return collection.Tasks[i], nil
 	}
 
-	return Task{}, fmt.Errorf("task %s not found", id)
+	return Task{}, fmt.Errorf("%w: task %s", ErrNotFound, id)
 }
 
 func (s *Service) Start(id string) error {
@@ -153,7 +159,7 @@ func (s *Service) transition(id, from, to string) error {
 			continue
 		}
 		if collection.Tasks[i].Status != from {
-			return fmt.Errorf("cannot move task from %s to %s", collection.Tasks[i].Status, to)
+			return fmt.Errorf("%w: cannot move task from %s to %s", ErrInvalidTransition, collection.Tasks[i].Status, to)
 		}
 
 		collection.Tasks[i].Status = to
@@ -161,7 +167,7 @@ func (s *Service) transition(id, from, to string) error {
 		return s.store.Save(collection)
 	}
 
-	return fmt.Errorf("task %s not found", id)
+	return fmt.Errorf("%w: task %s", ErrNotFound, id)
 }
 
 func isValidPriority(priority string) bool {

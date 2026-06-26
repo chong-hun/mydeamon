@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -50,8 +51,112 @@ func TestServiceCompleteRejectsInvalidTransition(t *testing.T) {
 		t.Fatalf("Create returned error: %v", err)
 	}
 
-	if err := svc.Complete("task_001"); err == nil {
+	err := svc.Complete("task_001")
+	if err == nil {
 		t.Fatal("expected invalid transition error")
+	}
+	if !errors.Is(err, ErrInvalidTransition) {
+		t.Fatalf("expected invalid transition error, got %v", err)
+	}
+}
+
+func TestServiceCreateRejectsEmptyTitle(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "tasks.json"))
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, func() time.Time { return now }, func() string { return "task_001" })
+
+	_, err := svc.Create(CreateInput{
+		Title:    "   ",
+		Priority: PriorityLow,
+	})
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+	if !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+}
+
+func TestServiceCreateRejectsInvalidPriority(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "tasks.json"))
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, func() time.Time { return now }, func() string { return "task_001" })
+
+	_, err := svc.Create(CreateInput{
+		Title:    "Draft API",
+		Priority: "urgent",
+	})
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+	if !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+}
+
+func TestServiceGetNotFound(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "tasks.json"))
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, func() time.Time { return now }, func() string { return "task_001" })
+
+	_, err := svc.Get("missing")
+	if err == nil {
+		t.Fatal("expected not found error")
+	}
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found error, got %v", err)
+	}
+}
+
+func TestServiceUpdateRejectsInvalidPriority(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "tasks.json"))
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, func() time.Time { return now }, func() string { return "task_001" })
+
+	if _, err := svc.Create(CreateInput{Title: "Draft API", Priority: PriorityHigh}); err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	_, err := svc.Update("task_001", UpdateInput{
+		Title:    "Draft API",
+		Priority: "urgent",
+	})
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+	if !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+}
+
+func TestServiceUpdateNotFound(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "tasks.json"))
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, func() time.Time { return now }, func() string { return "task_001" })
+
+	_, err := svc.Update("missing", UpdateInput{
+		Title:    "Draft API",
+		Priority: PriorityMedium,
+	})
+	if err == nil {
+		t.Fatal("expected not found error")
+	}
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found error, got %v", err)
+	}
+}
+
+func TestServiceStartRejectsMissingTask(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "tasks.json"))
+	now := time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC)
+	svc := NewService(store, func() time.Time { return now }, func() string { return "task_001" })
+
+	err := svc.Start("missing")
+	if err == nil {
+		t.Fatal("expected not found error")
+	}
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found error, got %v", err)
 	}
 }
 
@@ -104,6 +209,13 @@ func TestServiceWorkflowHappyPath(t *testing.T) {
 	currentTime = currentTime.Add(time.Minute)
 	if err := svc.Start("task_001"); err != nil {
 		t.Fatalf("Start returned error: %v", err)
+	}
+	started, err := svc.Get("task_001")
+	if err != nil {
+		t.Fatalf("Get after Start returned error: %v", err)
+	}
+	if !started.UpdatedAt.After(updated.UpdatedAt) {
+		t.Fatalf("expected transition timestamp to advance")
 	}
 	currentTime = currentTime.Add(time.Minute)
 	if err := svc.Block("task_001"); err != nil {
