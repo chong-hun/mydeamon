@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestStoreSaveAndLoadRoundTripsTasks(t *testing.T) {
 	if len(got.Tasks) != 1 {
 		t.Fatalf("expected 1 task, got %d", len(got.Tasks))
 	}
-	if got.Tasks[0].Title != "Draft daemon API" {
-		t.Fatalf("unexpected title: %q", got.Tasks[0].Title)
+	if !reflect.DeepEqual(got.Tasks[0], input.Tasks[0]) {
+		t.Fatalf("expected task %#v, got %#v", input.Tasks[0], got.Tasks[0])
 	}
 }

@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -51,9 +52,14 @@ func (s *Store) Save(collection Collection) error {
 		_ = os.Remove(tmpPath)
 	}()
 
-	if _, err := tmp.Write(data); err != nil {
+	n, err := tmp.Write(data)
+	if err != nil {
 		_ = tmp.Close()
 		return err
+	}
+	if n != len(data) {
+		_ = tmp.Close()
+		return io.ErrShortWrite
 	}
 	if err := tmp.Chmod(0o644); err != nil {
 		_ = tmp.Close()
