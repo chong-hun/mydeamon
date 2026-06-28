@@ -174,14 +174,14 @@ textarea {
 
 .task-list-panel,
 .task-detail,
-dialog::backdrop + .dialog-form,
-dialog {
+.create-panel,
+.dialog-form {
   border-radius: 24px;
 }
 
 .task-list-panel,
 .task-detail,
-dialog {
+.create-panel {
   background: var(--panel);
   border: 1px solid rgba(211, 197, 170, 0.7);
   box-shadow: var(--shadow);
@@ -359,9 +359,23 @@ dialog {
   color: var(--accent);
 }
 
-dialog {
+.create-panel {
+  position: fixed;
+  inset: 50% auto auto 50%;
   width: min(560px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 30;
   padding: 0;
+}
+
+body.dialog-fallback-open::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 26, 17, 0.28);
+  backdrop-filter: blur(2px);
+  z-index: 20;
 }
 
 .dialog-form {

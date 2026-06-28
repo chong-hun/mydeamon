@@ -49,15 +49,15 @@
       <section id="task-detail" class="task-detail"></section>
     </main>
 
-    <dialog id="create-dialog">
-      <form method="dialog" id="create-form" class="dialog-form">
+    <section id="create-panel" class="create-panel" hidden>
+      <form id="create-form" class="dialog-form">
         <div class="dialog-header">
           <h2>Create task</h2>
           <button type="button" id="create-cancel" class="ghost-button">Close</button>
         </div>
         <label>
           <span>Title</span>
-          <input name="title" required maxlength="120">
+          <input id="create-title" name="title" required maxlength="120">
         </label>
         <label>
           <span>Description</span>
@@ -80,7 +80,7 @@
           <button id="create-submit" type="submit">Create</button>
         </div>
       </form>
-    </dialog>
+    </section>
 
     <script src="./view-model.js"></script>
     <script src="./app.js"></script>

@@ -1,4 +1,16 @@
-const { filterTasks, allowedActions } = window.viewModel;
+const fallbackViewModel = {
+  filterTasks(tasks) {
+    return Array.isArray(tasks) ? tasks : [];
+  },
+  allowedActions() {
+    return [];
+  },
+};
+
+const rendererViewModel = window.viewModel || fallbackViewModel;
+const filterTasksFromModel = rendererViewModel.filterTasks.bind(rendererViewModel);
+const allowedActionsFromModel = rendererViewModel.allowedActions.bind(rendererViewModel);
+let rendererBooted = false;
 
 const state = {
   tasks: [],
@@ -39,7 +51,11 @@ function setBusy(nextBusy) {
   state.busy = nextBusy;
   const buttons = document.querySelectorAll('button');
   for (const button of buttons) {
-    if (button.id === 'create-cancel' || button.id === 'create-dismiss') {
+    if (
+      button.id === 'new-task-button' ||
+      button.id === 'create-cancel' ||
+      button.id === 'create-dismiss'
+    ) {
       continue;
     }
     button.disabled = nextBusy;
@@ -102,7 +118,7 @@ function selectFirstVisible(items) {
 async function refreshTasks() {
   const response = await callDesktop(window.desktopAPI.loadTasks, [], '');
   state.tasks = Array.isArray(response && response.tasks) ? response.tasks : [];
-  const visibleItems = filterTasks(state.tasks, state.filters);
+  const visibleItems = filterTasksFromModel(state.tasks, state.filters);
   selectFirstVisible(visibleItems);
   render();
 }
@@ -198,7 +214,7 @@ function renderDetail(task) {
   }
 
   const tagsValue = Array.isArray(task.tags) ? task.tags.join(', ') : '';
-  const actions = allowedActions(task.status);
+  const actions = allowedActionsFromModel(task.status);
   const createdAt = task.created_at || task.createdAt;
   const updatedAt = task.updated_at || task.updatedAt;
 
@@ -295,7 +311,7 @@ function renderDetail(task) {
 
 function render() {
   renderStatus();
-  const items = filterTasks(state.tasks, state.filters);
+  const items = filterTasksFromModel(state.tasks, state.filters);
   selectFirstVisible(items);
   renderList(items);
   const selected = state.tasks.find((task) => task.id === state.selectedTaskID) || null;
@@ -329,18 +345,28 @@ function bindRefresh() {
 }
 
 function bindCreateDialog() {
-  const dialog = document.getElementById('create-dialog');
+  const panel = document.getElementById('create-panel');
   const form = document.getElementById('create-form');
+  const titleInput = document.getElementById('create-title');
+
+  function openDialog() {
+    panel.hidden = false;
+    document.body.classList.add('dialog-fallback-open');
+    if (titleInput && typeof titleInput.focus === 'function') {
+      titleInput.focus();
+    }
+  }
 
   function closeDialog() {
-    dialog.close();
+    panel.hidden = true;
+    document.body.classList.remove('dialog-fallback-open');
     form.reset();
   }
 
   document.getElementById('new-task-button').addEventListener('click', () => {
     setError('');
     setNotice('');
-    dialog.showModal();
+    openDialog();
   });
 
   document.getElementById('create-cancel').addEventListener('click', closeDialog);
@@ -369,10 +395,20 @@ function bindCreateDialog() {
   });
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
+async function bootRenderer() {
+  if (rendererBooted) {
+    return;
+  }
+  rendererBooted = true;
   bindFilters();
   bindRefresh();
   bindCreateDialog();
   render();
   await refreshAll();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  void bootRenderer();
 });
+
+void bootRenderer();
